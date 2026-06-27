@@ -1,0 +1,12 @@
+data/raw/
+data/processed/
+models/artifacts/
+__pycache__/
+*.pyc
+.env
+.DS_Store
+*.joblib
+*.pkl
+.ipynb_checkpoints/
+proposal.md
+venv

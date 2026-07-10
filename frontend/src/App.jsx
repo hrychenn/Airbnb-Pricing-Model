@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { fetchOptions, predictPrice } from './api'
 import ShapChart from './ShapChart'
 import PriceMap from './PriceMap'
+import Distribution from './Distribution'
+import WhatIf from './WhatIf'
 
 const DEFAULTS = {
   room_type: 'Entire home/apt',
@@ -36,6 +38,7 @@ export default function App() {
   const [options, setOptions] = useState(null)
   const [form, setForm] = useState(DEFAULTS)
   const [result, setResult] = useState(null)
+  const [submitted, setSubmitted] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
@@ -70,6 +73,7 @@ export default function App() {
     setLoading(true); setError(null)
     try {
       setResult(await predictPrice(form))
+      setSubmitted(form)   // snapshot for the what-if panel (only updates on predict)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -209,6 +213,18 @@ export default function App() {
           {error && <div className="error-banner">{error}</div>}
         </aside>
       </div>
+
+      {result && submitted && (
+        <>
+          <section className="card viz-card">
+            <h2>Market context</h2>
+            <Distribution price={result.price} />
+          </section>
+          <section className="card viz-card">
+            <WhatIf listing={submitted} features={options.whatif_features} />
+          </section>
+        </>
+      )}
 
       <section className="card map-card">
         <PriceMap

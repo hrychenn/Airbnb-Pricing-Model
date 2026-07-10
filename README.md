@@ -101,12 +101,15 @@ streamlit run app/app.py
 ### Layout
 
 ```
-api/main.py            FastAPI: /api/options, /api/predict, /api/map, /api/health
+api/main.py            FastAPI: /api/options, /api/predict, /api/map,
+                       /api/distribution, /api/whatif, /api/health
 src/inference.py       shared feature-building + predict (used by API and Streamlit)
 src/build_app_metadata.py   builds the dropdown/lookup metadata + neighbourhood centroids
 frontend/              React + Vite SPA
   App.jsx              form + result layout
   ShapChart.jsx        per-prediction SHAP contribution bars
+  Distribution.jsx     NYC price histogram + your-listing percentile
+  WhatIf.jsx           interactive sensitivity curve (price vs one feature)
   PriceMap.jsx         Leaflet price map of NYC (dots coloured by price)
   index.css            styling
 app/app.py             Streamlit fallback UI
@@ -114,4 +117,6 @@ app/app.py             Streamlit fallback UI
 
 ### Visualizations
 - **Per-prediction SHAP chart** — diverging bars showing what pushed the price up/down.
+- **Price distribution + percentile** — histogram of all NYC listing prices with your prediction marked and a "top X%" readout.
+- **What-if sensitivity curves** — interactive line chart of predicted price as one feature (accommodates, bedrooms, review score, …) sweeps its range, holding the rest fixed.
 - **NYC price map** — Leaflet map (free CARTO tiles, no API key) with ~2,500 listings coloured by nightly price; the selected neighbourhood is ringed and the map recenters on it.

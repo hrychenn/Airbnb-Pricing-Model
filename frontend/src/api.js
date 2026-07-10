@@ -24,3 +24,19 @@ export async function predictPrice(listing) {
   }
   return res.json()
 }
+
+export async function fetchDistribution() {
+  const res = await fetch('/api/distribution')
+  if (!res.ok) throw new Error('Failed to load distribution')
+  return res.json()
+}
+
+export async function fetchWhatIf(listing, vary) {
+  const res = await fetch(`/api/whatif?vary=${encodeURIComponent(vary)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(listing),
+  })
+  if (!res.ok) throw new Error('What-if failed')
+  return res.json()
+}

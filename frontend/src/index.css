@@ -115,6 +115,34 @@ input[type='range'] { width: 100%; accent-color: var(--coral); }
 }
 .empty-icon { font-size: 40px; margin-bottom: 10px; }
 
+/* --- visualization panels --- */
+.viz-card { margin-top: 24px; }
+.viz-card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 14px; }
+
+/* price distribution */
+.dist-caption { font-size: 14px; color: #333; margin-bottom: 10px; line-height: 1.5; }
+.dist-svg { width: 100%; height: auto; display: block; }
+.dist-bar { fill: #d9dde3; }
+.dist-bar.below { fill: #ffc2c4; }
+.dist-mark { stroke: var(--coral); stroke-width: 2; }
+.dist-mark-dot { fill: var(--coral); }
+.dist-tick { font-size: 11px; fill: var(--muted); }
+
+/* what-if curve */
+.whatif-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+.whatif-head h3 { margin: 0; font-size: 15px; }
+.whatif-head select { width: auto; min-width: 150px; }
+.wi-body { transition: opacity 0.15s; }
+.wi-body.dim { opacity: 0.45; }
+.wi-svg { width: 100%; height: auto; display: block; }
+.wi-grid { stroke: #eee; stroke-width: 1; }
+.wi-tick { font-size: 11px; fill: var(--muted); }
+.wi-area { fill: rgba(255, 90, 95, 0.08); }
+.wi-line { fill: none; stroke: var(--coral); stroke-width: 2.5; }
+.wi-dot { fill: #fff; stroke: var(--coral); stroke-width: 1.5; }
+.wi-cur { stroke: #bbb; stroke-width: 1; stroke-dasharray: 3 3; }
+.wi-cur-dot { fill: var(--coral); stroke: #fff; stroke-width: 2; }
+
 /* --- price map --- */
 .map-card { margin-top: 24px; }
 .map-wrap { display: flex; flex-direction: column; gap: 12px; }

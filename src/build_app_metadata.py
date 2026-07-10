@@ -1,0 +1,90 @@
+"""
+Build the lookup metadata the Streamlit app needs to turn a handful of human inputs
+into the exact 51-feature vector the model expects.
+
+Reads the trained artifact (for the train-only neighbourhood encoding) plus the
+processed data (for per-neighbourhood distance and sensible defaults), and writes
+models/artifacts/app_metadata.joblib.
+
+Run:  python -m src.build_app_metadata   (from project root)
+"""
+import joblib
+import pandas as pd
+
+ARTIFACT = 'models/artifacts/xgb_final.joblib'
+FEATURES = 'data/processed/features.csv'
+CLEAN    = 'data/processed/listings_clean.csv'
+OUT      = 'models/artifacts/app_metadata.joblib'
+
+# Human-readable labels for the 18 amenity flags
+AMENITY_LABELS = {
+    'has_wifi': 'Wifi',
+    'has_kitchen': 'Kitchen',
+    'has_air_conditioning': 'Air conditioning',
+    'has_heating': 'Heating',
+    'has_tv': 'TV',
+    'has_washer': 'Washer',
+    'has_dryer': 'Dryer',
+    'has_dishwasher': 'Dishwasher',
+    'has_dedicated_workspace': 'Dedicated workspace',
+    'has_self_checkin': 'Self check-in',
+    'has_elevator': 'Elevator',
+    'has_pool': 'Pool',
+    'has_hot_tub': 'Hot tub',
+    'has_gym': 'Gym',
+    'has_free_parking': 'Free parking',
+    'has_bathtub': 'Bathtub',
+    'has_long_term_stays': 'Long-term stays allowed',
+    'has_first_aid_kit': 'First aid kit',
+}
+
+
+def main():
+    artifact = joblib.load(ARTIFACT)
+    feature_cols = artifact['feature_cols']
+    neigh_mean = artifact['neigh_mean_train']          # Series: neighbourhood -> encoded value
+    global_encoded = float(artifact['global_mean_train'])
+
+    feats = pd.read_csv(FEATURES)
+    clean = pd.read_csv(CLEAN)
+
+    # Per-neighbourhood median distance to centre (from engineered features)
+    neigh_distance = feats.groupby('neighbourhood_cleansed')['distance_to_center_km'].median()
+    global_distance = float(feats['distance_to_center_km'].median())
+
+    # Per-neighbourhood centroid (median lat/lng) so the map can mark the selected area
+    centroids = clean.groupby('neighbourhood_cleansed')[['latitude', 'longitude']].median()
+    neigh_centroids = {n: [float(r['latitude']), float(r['longitude'])]
+                       for n, r in centroids.iterrows()}
+
+    # Category lists (mirror notebook 02's grouping so the dummy columns line up)
+    room_types = clean['room_type'].value_counts().index.tolist()
+    top_props = clean['property_type'].value_counts().head(10).index.tolist()
+    property_types = top_props + ['Other']
+
+    metadata = {
+        'feature_cols': feature_cols,
+        'neighbourhoods': sorted(neigh_mean.index.tolist()),
+        'neigh_encoded': neigh_mean.to_dict(),
+        'neigh_distance': neigh_distance.to_dict(),
+        'global_encoded': global_encoded,
+        'global_distance': global_distance,
+        'room_types': room_types,
+        'property_types': property_types,
+        'neigh_centroids': neigh_centroids,
+        'amenity_labels': AMENITY_LABELS,
+        # Defaults for fields the UI doesn't expose directly
+        'amenity_count_median': int(feats['amenity_count'].median()),
+        'median_price': float(feats['price'].median()),
+    }
+
+    joblib.dump(metadata, OUT)
+    print(f'Wrote {OUT}')
+    print(f'  neighbourhoods: {len(metadata["neighbourhoods"])}')
+    print(f'  room_types: {room_types}')
+    print(f'  property_types: {property_types}')
+    print(f'  amenity_count_median: {metadata["amenity_count_median"]}')
+
+
+if __name__ == '__main__':
+    main()

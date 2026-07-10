@@ -53,19 +53,65 @@ Download NYC listings from [Inside Airbnb](http://insideairbnb.com/get-the-data/
 
 ## Results
 
+Held-out test set (20%, ~4,250 listings). Metrics computed on dollar prices after inverting the log transform.
+
 | Model | MAPE | RMSE | R² |
 |---|---|---|---|
-| Naive baseline | ~38% | — | — |
-| Ridge regression | — | — | — |
-| Random forest | — | — | — |
-| XGBoost | — | — | — |
-| XGBoost + HF embeddings | — | — | — |
+| Naive baseline (mean price) | 107.8% | $243 | ~0.00 |
+| Ridge regression | 33.2% | $170 | 0.51 |
+| Random forest | 26.9% | $146 | 0.64 |
+| XGBoost (tabular) | 25.2% | $137 | 0.68 |
+| XGBoost + HF embeddings | 25.3% | $138 | 0.68 |
+| **XGBoost (tuned)** — deployed | **24.6%** | **$135** | **0.69** |
+
+**Notes on results:**
+- The HuggingFace amenity embeddings did **not** improve on the hand-engineered binary flags (an ablation in notebook 03 shows they are *substitutes*, not complements). The simpler tabular model is deployed.
+- Final model clears the revised target (MAPE < 25%, R² > 0.65). The original 20% MAPE target proved optimistic for a single-scrape, tabular-only model — remaining error is concentrated in the luxury tail, which needs listing photos/description text to model. See the "Success Criteria" section in notebook 03.
 
 ---
 
 ## Deployment
 
+The app is a **FastAPI backend** (serves the model) + a **React/Vite frontend** (the UI). A single-file Streamlit version is also kept as a fallback.
+
+One-time, after training — build the metadata lookup the app needs:
+
 ```bash
-cd app
-streamlit run app.py
+python -m src.build_app_metadata      # writes models/artifacts/app_metadata.joblib
 ```
+
+**Run the React app (two terminals):**
+
+```bash
+# terminal 1 — API on :8000
+uvicorn api.main:app --reload --port 8000
+
+# terminal 2 — UI on :5173 (proxies /api → :8000)
+cd frontend && npm install && npm run dev
+```
+
+Open http://localhost:5173. The frontend collects listing details, POSTs to `/api/predict`, and renders the recommended price plus a SHAP contribution chart explaining it.
+
+**Fallback — Streamlit (single command):**
+
+```bash
+streamlit run app/app.py
+```
+
+### Layout
+
+```
+api/main.py            FastAPI: /api/options, /api/predict, /api/map, /api/health
+src/inference.py       shared feature-building + predict (used by API and Streamlit)
+src/build_app_metadata.py   builds the dropdown/lookup metadata + neighbourhood centroids
+frontend/              React + Vite SPA
+  App.jsx              form + result layout
+  ShapChart.jsx        per-prediction SHAP contribution bars
+  PriceMap.jsx         Leaflet price map of NYC (dots coloured by price)
+  index.css            styling
+app/app.py             Streamlit fallback UI
+```
+
+### Visualizations
+- **Per-prediction SHAP chart** — diverging bars showing what pushed the price up/down.
+- **NYC price map** — Leaflet map (free CARTO tiles, no API key) with ~2,500 listings coloured by nightly price; the selected neighbourhood is ringed and the map recenters on it.

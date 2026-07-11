@@ -1,12 +1,15 @@
 # Airbnb Dynamic Pricing Model
 
+### 🔗 [**Live demo →**](https://airbnb-dynamic-pricing-g7d0.onrender.com/)
+*Hosted free on Render — the first load after idle may take ~50 s to wake the server.*
+
 A machine-learning tool that recommends the optimal nightly price for an NYC Airbnb listing. A host enters their listing's attributes and gets a data-driven price, a SHAP breakdown of what drives it, and interactive "what-if" curves showing how changes (more guests, another bathroom, superhost status) would move the price.
 
 **Who it's for:** Airbnb **hosts/owners** deciding what to charge. The inputs (host listings count, availability, minimum-nights policy, superhost status) are things a host knows and controls, and the output is a single *recommended price* rather than a "fair range." The same model could power a guest-facing "is this fairly priced?" tool by reframing the output around the prediction's error band, but that isn't the goal here.
 
 **Dataset:** NYC listings from Inside Airbnb (~30k raw → ~21k after cleaning)  
 **Final model:** tuned XGBoost on 51 tabular features: 24.6% MAPE, R² 0.69 on a held-out test set  
-**App:** FastAPI backend + React/Vite frontend (Streamlit fallback); runs locally, HuggingFace Spaces deployment planned
+**App:** FastAPI backend + React/Vite frontend (Streamlit fallback), containerized with Docker and [deployed live on Render](https://airbnb-dynamic-pricing-g7d0.onrender.com/)
 
 ---
 

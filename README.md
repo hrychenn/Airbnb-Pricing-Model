@@ -135,8 +135,8 @@ docker build -t airbnb-pricing .
 docker run --rm -p 7860:7860 airbnb-pricing   # → http://localhost:7860
 ```
 
-See **[DEPLOY.md](DEPLOY.md)** for step-by-step Render deployment (free, no credit card).
-*(HuggingFace Spaces' Docker SDK is paid now, so Render is the free path for this stack.)*
+Deployed on **Render** (free tier) via `render.yaml` — a push to `main` auto-rebuilds and
+redeploys. *(HuggingFace Spaces' Docker SDK is paid now, so Render is the free path for this stack.)*
 
 ### Layout
 

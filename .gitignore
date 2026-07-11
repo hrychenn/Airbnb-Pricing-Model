@@ -18,3 +18,6 @@ frontend/dist/
 # Docker build (which builds from the repo) has the model + metadata.
 !models/artifacts/xgb_final.joblib
 !models/artifacts/app_metadata.joblib
+
+# local-only deploy notes (not published)
+DEPLOY.md

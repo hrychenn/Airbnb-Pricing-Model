@@ -62,6 +62,17 @@ def main():
     top_props = clean['property_type'].value_counts().head(10).index.tolist()
     property_types = top_props + ['Other']
 
+    # Neighbourhoods grouped by borough for a friendlier dropdown. Only offer
+    # neighbourhoods the model actually learned an encoding for (neigh_mean index).
+    known = set(neigh_mean.index)
+    borough_order = ['Manhattan', 'Brooklyn', 'Queens', 'Bronx', 'Staten Island']
+    grouped = (clean[clean['neighbourhood_cleansed'].isin(known)]
+               .groupby('neighbourhood_group_cleansed')['neighbourhood_cleansed']
+               .apply(lambda s: sorted(s.unique())).to_dict())
+    neighbourhoods_by_borough = {b: grouped[b] for b in borough_order if b in grouped}
+    for b, names in grouped.items():          # append any borough not in the preset order
+        neighbourhoods_by_borough.setdefault(b, names)
+
     metadata = {
         'feature_cols': feature_cols,
         'neighbourhoods': sorted(neigh_mean.index.tolist()),
@@ -72,6 +83,7 @@ def main():
         'room_types': room_types,
         'property_types': property_types,
         'neigh_centroids': neigh_centroids,
+        'neighbourhoods_by_borough': neighbourhoods_by_borough,
         'amenity_labels': AMENITY_LABELS,
         # Defaults for fields the UI doesn't expose directly
         'amenity_count_median': int(feats['amenity_count'].median()),
@@ -81,6 +93,7 @@ def main():
     joblib.dump(metadata, OUT)
     print(f'Wrote {OUT}')
     print(f'  neighbourhoods: {len(metadata["neighbourhoods"])}')
+    print(f'  boroughs: {[(b, len(n)) for b, n in neighbourhoods_by_borough.items()]}')
     print(f'  room_types: {room_types}')
     print(f'  property_types: {property_types}')
     print(f'  amenity_count_median: {metadata["amenity_count_median"]}')

@@ -113,6 +113,7 @@ def options():
         "room_types": META["room_types"],
         "property_types": META["property_types"],
         "neighbourhoods": META["neighbourhoods"],
+        "neighbourhoods_by_borough": META["neighbourhoods_by_borough"],  # {borough: [names]}
         "neigh_centroids": META["neigh_centroids"],   # {name: [lat, lng]}
         "amenity_labels": META["amenity_labels"],   # {col: display name}
         "amenity_count_median": META["amenity_count_median"],

@@ -132,9 +132,13 @@ export default function App() {
 
           <section className="card">
             <h2>Location</h2>
-            <Field label="Neighbourhood">
+            <Field label="Neighbourhood" hint=" (grouped by borough)">
               <select value={form.neighbourhood} onChange={set('neighbourhood')}>
-                {options.neighbourhoods.map((n) => <option key={n}>{n}</option>)}
+                {Object.entries(options.neighbourhoods_by_borough).map(([borough, names]) => (
+                  <optgroup key={borough} label={borough}>
+                    {names.map((n) => <option key={n} value={n}>{n}</option>)}
+                  </optgroup>
+                ))}
               </select>
             </Field>
           </section>

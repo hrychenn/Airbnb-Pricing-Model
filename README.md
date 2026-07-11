@@ -1,10 +1,12 @@
 # Airbnb Dynamic Pricing Model
 
-A machine learning pipeline that predicts optimal nightly prices for Airbnb listings using tabular features and HuggingFace sentence embeddings.
+A machine-learning tool that recommends the optimal nightly price for an NYC Airbnb listing. A host enters their listing's attributes and gets a data-driven price, a SHAP breakdown of what drives it, and interactive "what-if" curves showing how changes (more guests, another bathroom, superhost status) would move the price.
 
-**Dataset:** NYC listings from Inside Airbnb (~48,000 records)  
-**Final model:** XGBoost + sentence-transformer embeddings (PCA-reduced)  
-**Deployment:** Streamlit app on HuggingFace Spaces
+**Who it's for:** Airbnb **hosts/owners** deciding what to charge. The inputs (host listings count, availability, minimum-nights policy, superhost status) are things a host knows and controls, and the output is a single *recommended price* rather than a "fair range." The same model could power a guest-facing "is this fairly priced?" tool by reframing the output around the prediction's error band, but that isn't the goal here.
+
+**Dataset:** NYC listings from Inside Airbnb (~30k raw → ~21k after cleaning)  
+**Final model:** tuned XGBoost on 51 tabular features: 24.6% MAPE, R² 0.69 on a held-out test set  
+**App:** FastAPI backend + React/Vite frontend (Streamlit fallback); runs locally, HuggingFace Spaces deployment planned
 
 ---
 
@@ -12,20 +14,39 @@ A machine learning pipeline that predicts optimal nightly prices for Airbnb list
 
 ```
 ├── data/
-│   ├── raw/            # Original, unmodified listings CSV
-│   ├── processed/      # Cleaned and feature-engineered datasets
-│   └── external/       # NYC geo data, etc.
+│   ├── raw/                     # Original listings.csv (gitignored)
+│   ├── processed/               # Cleaned + feature-engineered datasets (gitignored)
+│   └── external/                # NYC geo data, etc.
 ├── notebooks/
-│   ├── 01_eda.ipynb
-│   ├── 02_feature_engineering.ipynb
-│   └── 03_modeling.ipynb
+│   ├── 01_eda.ipynb             # EDA + cleaning → listings_clean.csv
+│   ├── 02_feature_engineering.ipynb   # features → features.csv
+│   └── 03_modeling.ipynb        # model comparison, tuning, SHAP → xgb_final.joblib
 ├── src/
-│   ├── features/       # Feature engineering logic
-│   ├── models/         # Training, tuning, evaluation
-│   └── visualization/  # Reusable plot helpers
-├── app/                # Streamlit application
-├── models/artifacts/   # Serialized pipelines (joblib)
-├── reports/figures/    # Saved charts for writeup
+│   ├── inference.py             # shared feature-building + predict (API & Streamlit)
+│   ├── build_app_metadata.py    # builds app_metadata.joblib (dropdowns, centroids)
+│   ├── features/                # feature-engineering helpers
+│   ├── models/                  # training/tuning/eval helpers
+│   └── visualization/           # reusable plot helpers
+├── api/
+│   └── main.py                  # FastAPI backend (predict, map, distribution, whatif)
+├── frontend/                    # React + Vite SPA (the dashboard)
+│   ├── index.html
+│   ├── vite.config.js           # dev server + /api proxy → :8000
+│   ├── package.json
+│   └── src/
+│       ├── App.jsx              # form + result layout
+│       ├── ShapChart.jsx        # per-prediction SHAP contribution bars
+│       ├── Distribution.jsx     # NYC price histogram + percentile
+│       ├── WhatIf.jsx           # interactive price-sensitivity curves
+│       ├── PriceMap.jsx         # Leaflet NYC price map
+│       ├── api.js               # fetch wrappers for the backend
+│       └── index.css            # styling
+├── app/
+│   └── app.py                   # Streamlit fallback UI
+├── models/artifacts/            # xgb_final.joblib + app_metadata.joblib (gitignored)
+├── reports/figures/             # saved charts from the notebooks
+├── .claude/launch.json          # dev-server launch configs
+├── requirements.txt
 └── tests/
 ```
 
@@ -66,7 +87,7 @@ Held-out test set (20%, ~4,250 listings). Metrics computed on dollar prices afte
 
 **Notes on results:**
 - The HuggingFace amenity embeddings did **not** improve on the hand-engineered binary flags (an ablation in notebook 03 shows they are *substitutes*, not complements). The simpler tabular model is deployed.
-- Final model clears the revised target (MAPE < 25%, R² > 0.65). The original 20% MAPE target proved optimistic for a single-scrape, tabular-only model — remaining error is concentrated in the luxury tail, which needs listing photos/description text to model. See the "Success Criteria" section in notebook 03.
+- Final model clears the revised target (MAPE < 25%, R² > 0.65). The original 20% MAPE target proved optimistic for a single-scrape, tabular-only model. The remaining error is concentrated in the luxury tail, which needs listing photos/description text to model. See the "Success Criteria" section in notebook 03.
 
 ---
 

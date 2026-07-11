@@ -119,6 +119,22 @@ Open http://localhost:5173. The frontend collects listing details, POSTs to `/ap
 streamlit run app/app.py
 ```
 
+### Live deployment (Render, free)
+
+The app is containerized as a **single Docker image** — FastAPI serves both the API and the
+built React app on one port. Everything the runtime needs (dropdowns, price-map sample,
+distribution) is baked into `app_metadata.joblib`, and SHAP values come from XGBoost's native
+`pred_contribs` (no `shap` lib) — so the image ships only code + the two `.joblib` artifacts.
+It peaks at ~156 MB RAM, well under Render free's 512 MB.
+
+```bash
+docker build -t airbnb-pricing .
+docker run --rm -p 7860:7860 airbnb-pricing   # → http://localhost:7860
+```
+
+See **[DEPLOY.md](DEPLOY.md)** for step-by-step Render deployment (free, no credit card).
+*(HuggingFace Spaces' Docker SDK is paid now, so Render is the free path for this stack.)*
+
 ### Layout
 
 ```

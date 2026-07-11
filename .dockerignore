@@ -1,0 +1,14 @@
+venv/
+**/node_modules/
+**/__pycache__/
+**/.ipynb_checkpoints/
+data/
+notebooks/
+reports/
+app/
+tests/
+*.md
+.git/
+.claude/
+frontend/dist/
+requirements.txt

@@ -15,11 +15,9 @@ Run (from project root):
 import os
 import sys
 
-import numpy as np
-import pandas as pd
-import shap
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 # Make `src` importable when running as `uvicorn api.main:app` from project root
@@ -37,33 +35,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Load once at startup — model, metadata, and a reusable SHAP explainer
+# Load once at startup. SHAP contributions come from XGBoost's native pred_contribs
+# (no shap library needed). All map/distribution data is baked into the metadata,
+# so the runtime needs only the two .joblib artifacts — no data CSVs.
 ARTIFACT, META = load_artifacts()
-EXPLAINER = shap.TreeExplainer(ARTIFACT["model"])
-
-# Sampled listing coordinates + price for the map layer (kept small for a light payload)
-_clean = pd.read_csv(os.path.join(ROOT, "data", "processed", "listings_clean.csv"),
-                     usecols=["latitude", "longitude", "price"])
-_sample = _clean.sample(n=min(2500, len(_clean)), random_state=42)
-MAP_POINTS = [
-    {"lat": round(float(r.latitude), 5), "lng": round(float(r.longitude), 5),
-     "price": round(float(r.price))}
-    for r in _sample.itertuples()
-]
-# 5th/95th price percentiles for the colour scale (clamps extreme values)
-MAP_PRICE_LO = float(_clean["price"].quantile(0.05))
-MAP_PRICE_HI = float(_clean["price"].quantile(0.95))
-
-# --- Price distribution (histogram for display + CDF for percentile lookup) ---
-_prices = _clean["price"].values
-_DIST_MAX = 1000  # histogram display cap; the long tail beyond is lumped into the last bin
-_counts, _edges = np.histogram(np.clip(_prices, 30, _DIST_MAX), bins=40, range=(30, _DIST_MAX))
-DIST_BINS = [{"x0": round(float(_edges[i])), "x1": round(float(_edges[i + 1])),
-              "count": int(_counts[i])} for i in range(len(_counts))]
-_qs = np.linspace(0, 1, 101)
-DIST_CDF = [[round(float(p), 2), round(float(q), 4)]
-            for p, q in zip(np.quantile(_prices, _qs), _qs)]
-DIST_MEDIAN = float(np.median(_prices))
 
 # --- What-if: which features can be swept, and over what range ---
 WHATIF_RANGES = {
@@ -125,13 +100,15 @@ def options():
 @app.get("/api/map")
 def map_points():
     """Sampled listing coordinates + price for the price map, plus the colour range."""
-    return {"points": MAP_POINTS, "price_lo": MAP_PRICE_LO, "price_hi": MAP_PRICE_HI}
+    return {"points": META["map_points"], "price_lo": META["map_price_lo"],
+            "price_hi": META["map_price_hi"]}
 
 
 @app.get("/api/distribution")
 def distribution():
     """NYC price histogram (for the bars) + CDF (for exact percentile lookup)."""
-    return {"bins": DIST_BINS, "cdf": DIST_CDF, "median": DIST_MEDIAN, "max": _DIST_MAX}
+    return {"bins": META["dist_bins"], "cdf": META["dist_cdf"],
+            "median": META["dist_median"], "max": META["dist_max"]}
 
 
 @app.post("/api/whatif")
@@ -153,10 +130,18 @@ def whatif(listing: Listing, vary: str):
 @app.post("/api/predict")
 def predict_price(listing: Listing):
     price, contributions, base_price = predict(
-        listing.model_dump(), ARTIFACT, META, explainer=EXPLAINER, top_k=10
+        listing.model_dump(), ARTIFACT, META, with_contribs=True, top_k=10
     )
     return {
         "price": round(price, 2),
         "base_price": round(base_price, 2) if base_price is not None else None,
         "contributions": contributions,
     }
+
+
+# --- Serve the built React app (production) ---
+# Mounted LAST so the /api/* routes above always take precedence. In local dev the
+# frontend runs on Vite (:5173) and this dir may not exist, so we mount only if built.
+_DIST = os.path.join(ROOT, "frontend", "dist")
+if os.path.isdir(_DIST):
+    app.mount("/", StaticFiles(directory=_DIST, html=True), name="static")

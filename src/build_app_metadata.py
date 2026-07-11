@@ -7,8 +7,13 @@ processed data (for per-neighbourhood distance and sensible defaults), and write
 models/artifacts/app_metadata.joblib.
 
 Run:  python -m src.build_app_metadata   (from project root)
+
+Everything the deployed app needs at runtime (dropdowns, centroids, the price-map
+sample, and the price distribution) is baked into app_metadata.joblib here, so the
+container only ships the two .joblib artifacts — no data CSVs required.
 """
 import joblib
+import numpy as np
 import pandas as pd
 
 ARTIFACT = 'models/artifacts/xgb_final.joblib'
@@ -73,6 +78,24 @@ def main():
     for b, names in grouped.items():          # append any borough not in the preset order
         neighbourhoods_by_borough.setdefault(b, names)
 
+    # --- Price-map sample (bake in so the runtime doesn't need the raw CSV) ---
+    sample = clean.sample(n=min(2500, len(clean)), random_state=42)
+    map_points = [{"lat": round(float(r.latitude), 5), "lng": round(float(r.longitude), 5),
+                   "price": round(float(r.price))} for r in sample.itertuples()]
+    map_price_lo = float(clean["price"].quantile(0.05))
+    map_price_hi = float(clean["price"].quantile(0.95))
+
+    # --- Price distribution: histogram (display) + CDF (percentile lookup) ---
+    prices = clean["price"].values
+    dist_max = 1000  # display cap; the long tail beyond is lumped into the last bin
+    counts, edges = np.histogram(np.clip(prices, 30, dist_max), bins=40, range=(30, dist_max))
+    dist_bins = [{"x0": round(float(edges[i])), "x1": round(float(edges[i + 1])),
+                  "count": int(counts[i])} for i in range(len(counts))]
+    qs = np.linspace(0, 1, 101)
+    dist_cdf = [[round(float(p), 2), round(float(q), 4)]
+                for p, q in zip(np.quantile(prices, qs), qs)]
+    dist_median = float(np.median(prices))
+
     metadata = {
         'feature_cols': feature_cols,
         'neighbourhoods': sorted(neigh_mean.index.tolist()),
@@ -88,6 +111,14 @@ def main():
         # Defaults for fields the UI doesn't expose directly
         'amenity_count_median': int(feats['amenity_count'].median()),
         'median_price': float(feats['price'].median()),
+        # Baked-in viz data so the runtime needs no data CSV
+        'map_points': map_points,
+        'map_price_lo': map_price_lo,
+        'map_price_hi': map_price_hi,
+        'dist_bins': dist_bins,
+        'dist_cdf': dist_cdf,
+        'dist_median': dist_median,
+        'dist_max': dist_max,
     }
 
     joblib.dump(metadata, OUT)

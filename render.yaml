@@ -1,0 +1,11 @@
+# Render Blueprint — deploys the single Docker container (FastAPI + built React app).
+# Render builds ./Dockerfile from the connected GitHub repo and injects $PORT at
+# runtime (the Dockerfile's CMD binds uvicorn to it).
+services:
+  - type: web
+    name: airbnb-dynamic-pricing
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true

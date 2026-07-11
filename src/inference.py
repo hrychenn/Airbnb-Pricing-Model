@@ -60,22 +60,28 @@ def build_feature_row(inputs: dict, feature_cols: list, meta: dict) -> pd.DataFr
     return pd.DataFrame([row])[feature_cols]
 
 
-def predict(inputs, artifact, meta, explainer=None, top_k=10):
+def predict(inputs, artifact, meta, with_contribs=False, top_k=10):
     """Return (price, shap_contributions, base_value_price).
 
     shap_contributions: list of {feature, value, contribution} sorted by |contribution|,
-    truncated to top_k. contribution is in log-price space (same as SHAP output).
+    truncated to top_k. Contributions are exact tree-SHAP values in log-price space,
+    computed by XGBoost's native `pred_contribs` (what shap.TreeExplainer calls under
+    the hood) — so we get identical explanations without the heavy `shap` dependency.
     """
+    import xgboost as xgb
+
+    model = artifact['model']
     X = build_feature_row(inputs, artifact['feature_cols'], meta)
-    log_pred = float(artifact['model'].predict(X)[0])
+    log_pred = float(model.predict(X)[0])
     price = float(np.expm1(log_pred))
 
     contributions = []
     base_price = None
-    if explainer is not None:
-        sv = explainer(X)
-        values = sv.values[0]
-        base = float(sv.base_values[0])
+    if with_contribs:
+        dmatrix = xgb.DMatrix(X, feature_names=list(X.columns))
+        # shape (1, n_features + 1); the last column is the base/expected value
+        contribs = model.get_booster().predict(dmatrix, pred_contribs=True)[0]
+        values, base = contribs[:-1], float(contribs[-1])
         base_price = float(np.expm1(base))
         order = np.argsort(np.abs(values))[::-1][:top_k]
         for i in order:

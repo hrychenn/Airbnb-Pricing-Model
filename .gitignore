@@ -1,6 +1,6 @@
 data/raw/
 data/processed/
-models/artifacts/
+models/artifacts/*
 __pycache__/
 *.pyc
 .env
@@ -13,3 +13,8 @@ venv
 node_modules/
 frontend/dist/
 .vite/
+
+# ...but DO commit the two small deployment artifacts (~5 MB) so Render's
+# Docker build (which builds from the repo) has the model + metadata.
+!models/artifacts/xgb_final.joblib
+!models/artifacts/app_metadata.joblib

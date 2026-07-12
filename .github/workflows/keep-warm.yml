@@ -1,0 +1,17 @@
+name: keep-warm
+
+# Pings the live Render service so its free-tier instance doesn't spin down
+# (Render sleeps after 15 min idle → ~1 min cold start). Keeping it warm means
+# a visitor always hits an already-running instance.
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"   # every 10 minutes
+  workflow_dispatch:          # allow manual runs from the Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping health endpoint
+        run: curl -sSf https://airbnb-dynamic-pricing-g7d0.onrender.com/api/health || true
